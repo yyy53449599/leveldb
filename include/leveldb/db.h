@@ -145,6 +145,11 @@ class LEVELDB_EXPORT DB {
   // Therefore the following call will compact the entire database:
   //    db->CompactRange(nullptr, nullptr);
   virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
+
+  // ----------------------------For TTL-----------------------------
+  // 为当前key设置ttl，过期后自动失效
+  virtual Status Put(const WriteOptions& options, const Slice& key,
+                     const Slice& value, uint64_t ttl) = 0;
 };
 
 // Destroy the contents of the specified database.

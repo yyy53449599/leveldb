@@ -517,3 +517,15 @@ if(LEVELDB_INSTALL)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
   )
 endif(LEVELDB_INSTALL)
+
+
+add_executable(db_test2
+        "${PROJECT_SOURCE_DIR}/test/db_test2.cc"
+)
+target_link_libraries(db_test2 PRIVATE leveldb)
+
+
+add_executable(ttl_test
+        "${PROJECT_SOURCE_DIR}/test/ttl_test.cc"
+)
+target_link_libraries(ttl_test PRIVATE leveldb gtest)
