@@ -52,6 +52,9 @@ class LEVELDB_EXPORT Status {
   static Status IOError(const Slice& msg, const Slice& msg2 = Slice()) {
     return Status(kIOError, msg, msg2);
   }
+  static Status Expire(const Slice& msg, const Slice& msg2 = Slice()) {
+    return Status(kExpire, msg, msg2);
+  }
 
   // Returns true iff the status indicates success.
   bool ok() const { return (state_ == nullptr); }
