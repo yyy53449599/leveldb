@@ -1197,6 +1197,10 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
   return DB::Put(o, key, val);
 }
+Status DBImpl::Put(const WriteOptions& options, const Slice& key,
+                   const Slice& value, uint64_t ttl) {
+  return DB::Put(options, key, value,ttl);
+}
 
 Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
   return DB::Delete(options, key);
@@ -1482,6 +1486,19 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
 
   v->Unref();
 }
+void DBImpl::AppendTS(const Slice& val, std::string* val_time,uint64_t ttl) {
+  val_time->reserve(TSL + val.size());
+  char ts[TSL];
+  uint64_t ot = env_->GetCurrentTime() + ttl;
+  *val_time = val.ToString();  
+  val_time->append(reinterpret_cast<const char*>(&ot), sizeof(ot));
+}
+
+uint64_t DBImpl::GetTS(const std::string* val) {
+    uint64_t expire_time;
+    memcpy(&expire_time, val->data() + val->size() - sizeof(uint64_t), sizeof(uint64_t));
+    return expire_time;
+}
 
 // Default implementations of convenience methods that subclasses of DB
 // can call if they wish
@@ -1491,6 +1508,25 @@ Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   return Write(opt, &batch);
 }
 
+Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value, uint64_t ttl) {
+
+  std::string val_time;
+  //为后续的时间预留足够的储存空间
+  size_all = value.size() + sizeof(uint64_t)
+  val_time.reserve(size_all);
+  //计算过期时间
+  uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl;
+  // 添加value的值
+  val_time.append(value.data(), value.size());
+  // 添加过期时间
+  val_time.append(reinterpret_cast<const char*>(&expire_time), sizeof(expire_time));
+  //打印过期时间
+  //std::cout<<"PUT"<<std::endl;
+  //std::cout << "timestamp: " << expire_time << std::endl;
+  WriteBatch batch;
+  batch.Put(key, Slice(val_time));
+  return Write(options, &batch);
+}
 Status DB::Delete(const WriteOptions& opt, const Slice& key) {
   WriteBatch batch;
   batch.Delete(key);

@@ -66,6 +66,8 @@ typedef uint64_t SequenceNumber;
 // can be packed together into 64-bits.
 static const SequenceNumber kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
+static const uint32_t TSL= sizeof(uint64_t);  
+
 struct ParsedInternalKey {
   Slice user_key;
   SequenceNumber sequence;
