@@ -11,7 +11,7 @@
 #include <set>
 #include <string>
 #include <vector>
-
+#include <iostream>
 #include "db/builder.h"
 #include "db/db_iter.h"
 #include "db/dbformat.h"
@@ -1521,7 +1521,7 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
 
   std::string val_time;
   //为后续的时间预留足够的储存空间
-  size_t size_all = value.size() + sizeof(uint64_t)
+  size_t size_all = value.size() + sizeof(uint64_t);
   val_time.reserve(size_all);
   //计算过期时间
   uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl;
