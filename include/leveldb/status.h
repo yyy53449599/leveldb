@@ -85,7 +85,8 @@ class LEVELDB_EXPORT Status {
     kCorruption = 2,
     kNotSupported = 3,
     kInvalidArgument = 4,
-    kIOError = 5
+    kIOError = 5,
+    kExpire = 6
   };
 
   Code code() const {
