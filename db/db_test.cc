@@ -2117,6 +2117,9 @@ class ModelDB : public DB {
   Status Put(const WriteOptions& o, const Slice& k, const Slice& v) override {
     return DB::Put(o, k, v);
   }
+  Status Put(const WriteOptions& options, const Slice& key, const Slice& value, uint64_t ttl) override {
+    return DB::Put(options, key, value,ttl);
+  }
   Status Delete(const WriteOptions& o, const Slice& key) override {
     return DB::Delete(o, key);
   }
