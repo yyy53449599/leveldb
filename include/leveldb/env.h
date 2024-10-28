@@ -63,6 +63,10 @@ class LEVELDB_EXPORT Env {
   //
   // The result of Default() belongs to leveldb and must never be deleted.
   static Env* Default();
+  uint64_t GetTime() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::system_clock::now().time_since_epoch()).count();  
+  }
 
   // Create an object that sequentially reads the file with the specified name.
   // On success, stores a pointer to the new file in *result and returns OK.

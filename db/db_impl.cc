@@ -1161,6 +1161,15 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   mem->Unref();
   if (imm != nullptr) imm->Unref();
   current->Unref();
+  if(s.ok()){
+    auto t1 = env_->GetTime();
+    auto t2 = GetTS(value);
+    std::cout<< "read time " << t1<<std::endl;
+    std::cout<< "read timestamp "<<t2 << std::endl;
+    if(env_->GetTime() > GetTS(value)){
+      return Status::Expire("Expire",Slice());
+    }
+  }
   return s;
 }
 
@@ -1489,7 +1498,7 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
 void DBImpl::AppendTS(const Slice& val, std::string* val_time,uint64_t ttl) {
   val_time->reserve(TSL + val.size());
   char ts[TSL];
-  uint64_t ot = env_->GetCurrentTime() + ttl;
+  uint64_t ot = env_->GetTime() + ttl;
   *val_time = val.ToString();  
   val_time->append(reinterpret_cast<const char*>(&ot), sizeof(ot));
 }
@@ -1512,7 +1521,7 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
 
   std::string val_time;
   //为后续的时间预留足够的储存空间
-  size_all = value.size() + sizeof(uint64_t)
+  size_t size_all = value.size() + sizeof(uint64_t)
   val_time.reserve(size_all);
   //计算过期时间
   uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl;
