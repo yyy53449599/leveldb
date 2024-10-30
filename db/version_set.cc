@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "db/db_impl.h"
 #include "db/filename.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
@@ -1513,6 +1514,11 @@ void Compaction::AddInputDeletions(VersionEdit* edit) {
     }
   }
 }
+uint64_t GetTS(const std::string* val) {
+    uint64_t expire_time;
+    memcpy(&expire_time, val->data() + val->size() - sizeof(uint64_t), sizeof(uint64_t));
+    return expire_time;
+}
 
 bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
   // Maybe use binary search to find right entry instead of linear search?
@@ -1525,7 +1531,18 @@ bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
         // We've advanced far enough
         if (user_cmp->Compare(user_key, f->smallest.user_key()) >= 0) {
           // Key falls in this file's range, so definitely not base level
-          return false;
+          // 检查文件中的键值对是否已过期
+          Iterator* iter = input_version_->vset_->table_cache_->NewIterator(ReadOptions(), f->number, f->file_size);
+          iter->Seek(user_key);
+          if (iter->Valid()) {
+            std::string value = iter->value().ToString();
+            uint64_t expire_time = input_version_->vset_->env_->GetTime();
+            if (expire_time <= GetTS(&value)) {
+              delete iter;
+              return false;
+            }
+          }
+          delete iter;
         }
         break;
       }
@@ -1550,6 +1567,21 @@ bool Compaction::ShouldStopBefore(const Slice& internal_key) {
   }
   seen_key_ = true;
 
+  // 检查当前键值对是否已过期
+    ParsedInternalKey ikey;
+    if (ParseInternalKey(internal_key, &ikey)) {
+      std::string value;
+      uint64_t file_number = grandparents_[grandparent_index_]->number;
+      uint64_t file_size = grandparents_[grandparent_index_]->file_size;
+      Status s = vset->table_cache_->Get(ReadOptions(), file_number, file_size, ikey.user_key, &value, nullptr);      if (s.ok()) {
+        uint64_t expire_time = GetTS(&value);
+        if (vset->env_->GetTime() > expire_time) {
+          // 键值对已过期，跳过
+          return false;
+        }
+      }
+    }
+    
   if (overlapped_bytes_ > MaxGrandParentOverlapBytes(vset->options_)) {
     // Too much overlap for current output; start new output
     overlapped_bytes_ = 0;
