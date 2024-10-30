@@ -982,6 +982,15 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         drop = true;
       }
 
+      // 检查数据是否过期
+      if (!drop) {
+        std::string value = input->value().ToString();
+        uint64_t expire_time = GetTS(&value);
+        if (env_->GetTime() > expire_time) {
+          drop = true;  // 数据已过期，丢弃
+        }
+      }
+      
       last_sequence_for_key = ikey.sequence;
     }
 #if 0
