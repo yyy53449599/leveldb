@@ -1514,6 +1514,11 @@ void Compaction::AddInputDeletions(VersionEdit* edit) {
     }
   }
 }
+uint64_t GetTS(const std::string* val) {
+    uint64_t expire_time;
+    memcpy(&expire_time, val->data() + val->size() - sizeof(uint64_t), sizeof(uint64_t));
+    return expire_time;
+}
 
 bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
   // Maybe use binary search to find right entry instead of linear search?
@@ -1562,6 +1567,21 @@ bool Compaction::ShouldStopBefore(const Slice& internal_key) {
   }
   seen_key_ = true;
 
+  // 检查当前键值对是否已过期
+    ParsedInternalKey ikey;
+    if (ParseInternalKey(internal_key, &ikey)) {
+      std::string value;
+      uint64_t file_number = grandparents_[grandparent_index_]->number;
+      uint64_t file_size = grandparents_[grandparent_index_]->file_size;
+      Status s = vset->table_cache_->Get(ReadOptions(), file_number, file_size, ikey.user_key, &value, nullptr);      if (s.ok()) {
+        uint64_t expire_time = GetTS(&value);
+        if (vset->env_->GetTime() > expire_time) {
+          // 键值对已过期，跳过
+          return false;
+        }
+      }
+    }
+    
   if (overlapped_bytes_ > MaxGrandParentOverlapBytes(vset->options_)) {
     // Too much overlap for current output; start new output
     overlapped_bytes_ = 0;
