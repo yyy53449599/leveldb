@@ -79,35 +79,6 @@ TEST(TestTTL, ReadTTL) {
 }
 
 // 给出的测试
-// TEST(TestTTL, CompactionTTL) {
-//     DB *db;
-
-//     if(OpenDB("testdb", &db).ok() == false) {
-//         std::cerr << "open db failed" << std::endl;
-//         abort();
-//     }
-
-//     uint64_t ttl = 20;
-//     InsertData(db, ttl);
-
-//     leveldb::Range ranges[1];
-//     ranges[0] = leveldb::Range("-", "A");
-//     uint64_t sizes[1];
-//     db->GetApproximateSizes(ranges, 1, sizes);
-//     ASSERT_GT(sizes[0], 0);
-
-//     Env::Default()->SleepForMicroseconds(ttl * 1000000);
-
-//     db->CompactRange(nullptr, nullptr);
-
-//     leveldb::Range ranges[1];
-//     ranges[0] = leveldb::Range("-", "A");
-//     uint64_t sizes[1];
-//     db->GetApproximateSizes(ranges, 1, sizes);
-//     ASSERT_EQ(sizes[0], 0);
-// }
-
-// 修改后的测试
 TEST(TestTTL, CompactionTTL) {
     DB *db;
 
@@ -117,34 +88,63 @@ TEST(TestTTL, CompactionTTL) {
     }
 
     uint64_t ttl = 20;
-    // 插入足够的数据以确保 Level0 有至少一个 SSTable
-    for (int i = 0; i < 1000; ++i) {
-        InsertData(db, ttl);
-    }
+    InsertData(db, ttl);
 
-    // 获取 Level0 的 SSTable 数量
-    std::string num_files;
-    db->GetProperty("leveldb.num-files-at-level0", &num_files);
-    ASSERT_GT(std::stoi(num_files), 0);
-
-    // 使用覆盖整个数据库的数据范围
-    leveldb::Range full_range;
-    full_range.start = "";
-    full_range.limit = "";
-
+    leveldb::Range ranges[1];
+    ranges[0] = leveldb::Range("-", "A");
     uint64_t sizes[1];
-    db->GetApproximateSizes(&full_range, 1, sizes);
+    db->GetApproximateSizes(ranges, 1, sizes);
     ASSERT_GT(sizes[0], 0);
 
     Env::Default()->SleepForMicroseconds(ttl * 1000000);
 
-    leveldb::Slice start(full_range.start);
-    leveldb::Slice limit(full_range.limit);
-    db->CompactRange(&start, &limit);
+    db->CompactRange(nullptr, nullptr);
 
-    db->GetApproximateSizes(&full_range, 1, sizes);
+    leveldb::Range ranges[1];
+    ranges[0] = leveldb::Range("-", "A");
+    uint64_t sizes[1];
+    db->GetApproximateSizes(ranges, 1, sizes);
     ASSERT_EQ(sizes[0], 0);
 }
+
+// 修改后的测试
+// TEST(TestTTL, CompactionTTL) {
+//     DB *db;
+
+//     if(OpenDB("testdb", &db).ok() == false) {
+//         std::cerr << "open db failed" << std::endl;
+//         abort();
+//     }
+
+//     uint64_t ttl = 20;
+//     // 插入足够的数据以确保 Level0 有至少一个 SSTable
+//     for (int i = 0; i < 1000; ++i) {
+//         InsertData(db, ttl);
+//     }
+
+//     // 获取 Level0 的 SSTable 数量
+//     std::string num_files;
+//     db->GetProperty("leveldb.num-files-at-level0", &num_files);
+//     ASSERT_GT(std::stoi(num_files), 0);
+
+//     // 使用覆盖整个数据库的数据范围
+//     leveldb::Range full_range;
+//     full_range.start = "";
+//     full_range.limit = "";
+
+//     uint64_t sizes[1];
+//     db->GetApproximateSizes(&full_range, 1, sizes);
+//     ASSERT_GT(sizes[0], 0);
+
+//     Env::Default()->SleepForMicroseconds(ttl * 1000000);
+
+//     leveldb::Slice start(full_range.start);
+//     leveldb::Slice limit(full_range.limit);
+//     db->CompactRange(&start, &limit);
+
+//     db->GetApproximateSizes(&full_range, 1, sizes);
+//     ASSERT_EQ(sizes[0], 0);
+// }
 
 
 int main(int argc, char** argv) {
