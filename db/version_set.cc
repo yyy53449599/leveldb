@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "db/db_impl.h"
 #include "db/filename.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
@@ -1525,7 +1526,18 @@ bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
         // We've advanced far enough
         if (user_cmp->Compare(user_key, f->smallest.user_key()) >= 0) {
           // Key falls in this file's range, so definitely not base level
-          return false;
+          // 检查文件中的键值对是否已过期
+          Iterator* iter = input_version_->vset_->table_cache_->NewIterator(ReadOptions(), f->number, f->file_size);
+          iter->Seek(user_key);
+          if (iter->Valid()) {
+            std::string value = iter->value().ToString();
+            uint64_t expire_time = input_version_->vset_->env_->GetTime();
+            if (expire_time <= GetTS(&value)) {
+              delete iter;
+              return false;
+            }
+          }
+          delete iter;
         }
         break;
       }
