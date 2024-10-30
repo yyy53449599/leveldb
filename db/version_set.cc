@@ -1514,6 +1514,11 @@ void Compaction::AddInputDeletions(VersionEdit* edit) {
     }
   }
 }
+uint64_t GetTS(const std::string* val) {
+    uint64_t expire_time;
+    memcpy(&expire_time, val->data() + val->size() - sizeof(uint64_t), sizeof(uint64_t));
+    return expire_time;
+}
 
 bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
   // Maybe use binary search to find right entry instead of linear search?
