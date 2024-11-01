@@ -982,15 +982,18 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         drop = true;
       }
 
-      // 检查数据是否过期
-      if (!drop) {
-        std::string value = input->value().ToString();
-        uint64_t expire_time = GetTS(&value);
-        if (env_->GetTime() > expire_time) {
-          drop = true;  // 数据已过期，丢弃
+      Slice value = input->value();
+      if (value.size() >= sizeof(uint64_t)) {
+        const char* ptr = value.data();
+        std::string temp_str(value.data(), value.size());
+        uint64_t expire_time = DBImpl::GetTS(&temp_str);
+        uint64_t current_time = env_->GetTime();
+
+        if (current_time > expire_time) {
+          drop = true;  
         }
-      }
-      
+      } 
+
       last_sequence_for_key = ikey.sequence;
     }
 #if 0
@@ -1150,7 +1153,6 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 
   bool have_stat_update = false;
   Version::GetStats stats;
-
   // Unlock while reading from files and memtables
   {
     mutex_.Unlock();
@@ -1166,6 +1168,20 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     }
     mutex_.Lock();
   }
+  if (s.ok()) {
+      auto t1 = env_->GetTime();
+      auto t2 = GetTS(value);
+      // std::cout<<value->size() << " " << t2 <<std::endl; 
+      // std::cout << "read time " << t1 << std::endl;
+      // std::cout << "read timestamp " << t2 << std::endl;
+      if(t1 >= t2){
+        
+        s = Status::Expire("Expire",Slice());
+      } else {
+        // std::cout<<"sadas"<<std::endl;
+        *value = value->substr(0, value->size() - sizeof(uint64_t));
+      }
+    }
 
   if (have_stat_update && current->UpdateStats(stats)) {
     MaybeScheduleCompaction();
@@ -1173,15 +1189,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   mem->Unref();
   if (imm != nullptr) imm->Unref();
   current->Unref();
-  if(s.ok()){
-    auto t1 = env_->GetTime();
-    auto t2 = GetTS(value);
-    std::cout<< "read time " << t1<<std::endl;
-    std::cout<< "read timestamp "<<t2 << std::endl;
-    if(env_->GetTime() > GetTS(value)){
-      return Status::Expire("Expire",Slice());
-    }
-  }
+  
   return s;
 }
 
@@ -1533,10 +1541,10 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
 
   std::string val_time;
   //为后续的时间预留足够的储存空间
-  size_t size_all = value.size() + sizeof(uint64_t);
-  val_time.reserve(size_all);
+  // size_t size_all = value.size() + sizeof(uint64_t);
+  // val_time.resize(size_all);
   //计算过期时间
-  uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl;
+  uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl * 1000; // 毫秒
   // 添加value的值
   val_time.append(value.data(), value.size());
   // 添加过期时间
@@ -1546,8 +1554,11 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
   //std::cout << "timestamp: " << expire_time << std::endl;
   WriteBatch batch;
   batch.Put(key, Slice(val_time));
+  // std::cout<<key.ToString()<<std::endl;
+  // std::cout<<val_time.size()<<std::endl;
   return Write(options, &batch);
 }
+
 Status DB::Delete(const WriteOptions& opt, const Slice& key) {
   WriteBatch batch;
   batch.Delete(key);

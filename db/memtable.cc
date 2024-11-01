@@ -8,6 +8,7 @@
 #include "leveldb/env.h"
 #include "leveldb/iterator.h"
 #include "util/coding.h"
+#include "db/db_impl.h"
 
 namespace leveldb {
 
