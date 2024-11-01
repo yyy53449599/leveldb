@@ -1180,6 +1180,8 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     std::cout<< "read timestamp "<<t2 << std::endl;
     if(env_->GetTime() > GetTS(value)){
       return Status::Expire("Expire",Slice());
+    } else {
+      *value = value->substr(0, value->size() - sizeof(uint64_t));
     }
   }
   return s;
@@ -1536,7 +1538,7 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
   size_t size_all = value.size() + sizeof(uint64_t);
   val_time.reserve(size_all);
   //计算过期时间
-  uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl;
+  uint64_t expire_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + ttl * 1000; // 毫秒
   // 添加value的值
   val_time.append(value.data(), value.size());
   // 添加过期时间
@@ -1548,6 +1550,7 @@ Status DB::Put(const WriteOptions& options, const Slice& key, const Slice& value
   batch.Put(key, Slice(val_time));
   return Write(options, &batch);
 }
+
 Status DB::Delete(const WriteOptions& opt, const Slice& key) {
   WriteBatch batch;
   batch.Delete(key);
