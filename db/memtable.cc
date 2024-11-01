@@ -125,17 +125,6 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
         case kTypeValue: {
           Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
           value->assign(v.data(), v.size());
-
-          uint64_t expire_time = DBImpl::GetTS(value);
-          uint64_t current_time = static_cast<uint64_t>(time(nullptr));
-          if (current_time > expire_time) {
-            *s = Status::Expire(Slice());
-            return true;
-          } else {
-            // 数据未过期，解析出实际的值部分，去掉过期时间戳
-            *value = value->substr(0, value->size() - sizeof(uint64_t));
-          }
-
           return true;
         }
         case kTypeDeletion:
