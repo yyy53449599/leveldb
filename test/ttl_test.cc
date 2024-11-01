@@ -76,11 +76,12 @@ TEST(TestTTL, ReadTTL) {
         status = db->Get(readOptions, key, &value);
         ASSERT_FALSE(status.ok());
     }
+    delete db;
 }
 
 TEST(TestTTL, CompactionTTL) {
     DB *db;
-
+    DestroyDB("testdb", Options());
     if(OpenDB("testdb", &db).ok() == false) {
         std::cerr << "open db failed" << std::endl;
         abort();
@@ -103,7 +104,8 @@ TEST(TestTTL, CompactionTTL) {
     ranges[0] = leveldb::Range("-", "A");
     uint64_t sizes1[1];
     db->GetApproximateSizes(ranges1, 1, sizes1);
-    ASSERT_EQ(sizes[0], 0);
+    ASSERT_EQ(sizes1[0], 0);
+    delete db;
 }
 
 
